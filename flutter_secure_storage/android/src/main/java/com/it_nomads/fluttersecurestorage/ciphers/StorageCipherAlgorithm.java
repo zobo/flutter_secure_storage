@@ -3,6 +3,9 @@ package com.it_nomads.fluttersecurestorage.ciphers;
 import android.os.Build;
 
 public enum StorageCipherAlgorithm {
+    // Legacy algorithm used by v9.x and earlier. Kept so data encrypted with it can still be
+    // decrypted and migrated to the current storage cipher; must never be used to encrypt new data.
+    AES_CBC_PKCS7Padding(StorageCipherImplementationAES18::new, 1),
     AES_GCM_NoPadding(null, Build.VERSION_CODES.M); // Implementation selected dynamically by factory
 
     final StorageCipherFunction storageCipher;
@@ -17,11 +20,6 @@ public enum StorageCipherAlgorithm {
     public static StorageCipherAlgorithm fromString(String name) {
         if ("AES_GCM_NoPadding_BIOMETRIC".equals(name)) {
             return AES_GCM_NoPadding; // Renamed in v10.1
-        }
-        if ("AES_CBC_PKCS7Padding".equals(name)) {
-            // Removed in v11. Map to GCM so the plugin can initialise; old
-            // ciphertext is unreadable and will be cleared by resetOnError.
-            return AES_GCM_NoPadding;
         }
         return valueOf(name);
     }

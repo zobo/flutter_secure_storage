@@ -15,6 +15,9 @@ public class StorageCipherFactory {
     private static final String ELEMENT_PREFERENCES_ALGORITHM_STORAGE = ELEMENT_PREFERENCES_ALGORITHM_PREFIX + "Storage";
     private static final KeyCipherAlgorithm DEFAULT_KEY_ALGORITHM = KeyCipherAlgorithm.RSA_ECB_OAEPwithSHA_256andMGF1Padding;
     private static final StorageCipherAlgorithm DEFAULT_STORAGE_ALGORITHM = StorageCipherAlgorithm.AES_GCM_NoPadding;
+    // Algorithms used by v9.x and earlier, before algorithm markers were introduced in v10.
+    private static final KeyCipherAlgorithm LEGACY_KEY_ALGORITHM = KeyCipherAlgorithm.RSA_ECB_PKCS1Padding;
+    private static final StorageCipherAlgorithm LEGACY_STORAGE_ALGORITHM = StorageCipherAlgorithm.AES_CBC_PKCS7Padding;
 
     private final KeyCipherAlgorithm savedKeyAlgorithm;
     private final StorageCipherAlgorithm savedStorageAlgorithm;
@@ -28,11 +31,17 @@ public class StorageCipherFactory {
         final String savedStorageCipherAlgorithm = configSource.getString(ELEMENT_PREFERENCES_ALGORITHM_STORAGE, null);
 
         if (savedKeyCipherAlgorithm == null || savedStorageCipherAlgorithm == null) {
-            // No algorithm markers exist, treat as a fresh install using current defaults.
-            // v11 requires users to have migrated through v10 first; data from v9 or earlier
-            // without markers is treated as if it uses the current defaults.
-            savedKeyAlgorithm = DEFAULT_KEY_ALGORITHM;
-            savedStorageAlgorithm = DEFAULT_STORAGE_ALGORITHM;
+            // No algorithm markers exist. This means either:
+            //  - a fresh install (no data to migrate), or
+            //  - data from v9.x or earlier, encrypted before algorithm markers were
+            //    introduced in v10, saved with the historical v9 defaults below.
+            // Using the legacy v9 defaults here lets the existing migration flow
+            // (requiresReEncryption/migrateData) decrypt any v9 data and re-encrypt it with
+            // the current algorithm in a single step, so a direct v9 -> v11 upgrade no
+            // longer causes data loss. For a genuinely fresh install there is no data to
+            // decrypt, so this only costs a harmless no-op migration pass.
+            savedKeyAlgorithm = LEGACY_KEY_ALGORITHM;
+            savedStorageAlgorithm = LEGACY_STORAGE_ALGORITHM;
         } else {
             savedKeyAlgorithm = KeyCipherAlgorithm.fromString(savedKeyCipherAlgorithm);
             savedStorageAlgorithm = StorageCipherAlgorithm.fromString(savedStorageCipherAlgorithm);

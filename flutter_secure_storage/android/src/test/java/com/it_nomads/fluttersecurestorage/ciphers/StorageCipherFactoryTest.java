@@ -71,10 +71,11 @@ public class StorageCipherFactoryTest {
     // -------------------------------------------------------------------------
 
     @Test
-    public void noSavedMarkers_savedAlgorithmsDefaultToCurrent() {
-        // With no markers, saved algorithms are the v11 defaults (OAEP+GCM).
-        // Current is also OAEP+GCM, so no re-encryption is required.
-        assertFalse(factory("RSA_ECB_OAEPwithSHA_256andMGF1Padding", "AES_GCM_NoPadding")
+    public void noSavedMarkers_savedAlgorithmsDefaultToLegacyV9Defaults() {
+        // With no markers, saved algorithms default to the legacy v9.x defaults
+        // (PKCS1/CBC) so that data from a direct v9 -> v11 upgrade can still be
+        // decrypted and migrated. Current is OAEP+GCM, so re-encryption is required.
+        assertTrue(factory("RSA_ECB_OAEPwithSHA_256andMGF1Padding", "AES_GCM_NoPadding")
                 .requiresReEncryption());
     }
 
@@ -87,14 +88,15 @@ public class StorageCipherFactoryTest {
     }
 
     @Test
-    public void savedMarkers_legacyPKCS1CBC_treatedAsCurrent_doesNotRequireReEncryption() {
-        // Users who skipped v10: markers say PKCS1/CBC (now removed).
-        // fromString() maps them to OAEP/GCM so saved == current == OAEP/GCM.
-        // No re-encryption is attempted; old ciphertext fails to decrypt and
-        // resetOnError clears individual keys as they are accessed.
+    public void savedMarkers_legacyPKCS1CBC_requiresReEncryptionToCurrent() {
+        // Users who skipped v10: markers say PKCS1/CBC, the algorithm used by v9.x.
+        // fromString() now resolves these to their own (legacy) enum values, which
+        // differ from the current OAEP/GCM defaults, so re-encryption is required.
+        // The existing migration flow decrypts with the legacy ciphers and
+        // re-encrypts with the current ones, preventing data loss.
         saveAlgorithms("RSA_ECB_PKCS1Padding", "AES_CBC_PKCS7Padding");
 
-        assertFalse(factory("RSA_ECB_OAEPwithSHA_256andMGF1Padding", "AES_GCM_NoPadding")
+        assertTrue(factory("RSA_ECB_OAEPwithSHA_256andMGF1Padding", "AES_GCM_NoPadding")
                 .requiresReEncryption());
     }
 

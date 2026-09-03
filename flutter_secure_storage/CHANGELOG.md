@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Android
+- Fixed permanent data loss when upgrading directly from a v9.x (or earlier) release to v11, skipping v10. The internal `RSA_ECB_PKCS1Padding` key cipher and `AES_CBC_PKCS7Padding` storage cipher used by v9.x are reintroduced as migration-only implementations (they are not selectable for new data). When no algorithm markers are found (which is the case for data saved before v10), the plugin now assumes these legacy v9 defaults instead of the current defaults, so the existing `migrateOnAlgorithmChange` flow can decrypt the old data and re-encrypt it with the current algorithm in a single step — matching a v9 -> v10 -> v11 upgrade, without requiring an intermediate v10 release.
+
 ## [11.0.0](https://github.com/juliansteenbakker/flutter_secure_storage/compare/flutter_secure_storage-v10.3.1...flutter_secure_storage-v11.0.0) (2026-08-06)
 
 **Breaking changes**

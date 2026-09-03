@@ -132,4 +132,34 @@ public class StorageCipherTest {
         assertArrayEquals(plaintext, fresh.decrypt(fresh.encrypt(plaintext)));
     }
 
+    // -------------------------------------------------------------------------
+    // StorageCipherImplementationAES18 (legacy v9.x cipher, migration-only)
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void legacyAes18_encryptDecrypt_roundTrip() throws Exception {
+        StorageCipherImplementationAES18 cipher = new StorageCipherImplementationAES18(context, new FakeKeyCipher(), null, defaultConfig);
+        byte[] plaintext = "legacy v9 secure data".getBytes(StandardCharsets.UTF_8);
+
+        byte[] encrypted = cipher.encrypt(plaintext);
+        byte[] decrypted = cipher.decrypt(encrypted);
+
+        assertArrayEquals(plaintext, decrypted);
+    }
+
+    @Test
+    public void legacyAes18_keyPersistedAcrossInstances() throws Exception {
+        // Simulates re-opening a v9 install: the wrapped key survives across instances,
+        // allowing old data to be decrypted during migration.
+        StorageCipherImplementationAES18 first = new StorageCipherImplementationAES18(context, new FakeKeyCipher(), null, defaultConfig);
+        byte[] plaintext = "old install data".getBytes(StandardCharsets.UTF_8);
+        byte[] encrypted = first.encrypt(plaintext);
+
+        StorageCipherImplementationAES18 second = new StorageCipherImplementationAES18(context, new FakeKeyCipher(), null, defaultConfig);
+        byte[] decrypted = second.decrypt(encrypted);
+
+        assertArrayEquals(plaintext, decrypted);
+    }
+
 }
+
